@@ -22,7 +22,7 @@ export async function fetchFromJikanById(animeId) {
 export async function fetchFromJikanByName(animeName) {
     try {
         const JIKAN_API = process.env.JIKAN_API;
-        const response = await axios.get(`${JIKAN_API}anime/?q=${animeName}`);
+        const response = await axios.get(`${JIKAN_API}anime?q=${animeName}&order_by=rank&sort=asc`);
         return response.data;
     } catch (error) {
         console.error('Error fetching from Jikan:', error);
@@ -38,6 +38,66 @@ export async function fetchFromJikanSeasonAnime() {
     } catch (error) {
         console.error('Error fetching from Jikan:', error);
         throw error;
+    }
+}
+
+export async function fetchTrendingAnime() {
+    try {
+        const JIKAN_API = process.env.JIKAN_API;
+        const response = await axios.get(`${JIKAN_API}top/anime?filter=airing`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching current trending anime from Jikan:', error);
+        throw error;
+    }
+}
+
+export async function fetchSpotlightAnime() {
+    const page = 1;
+    try {
+        const BASE_URL = process.env.BASE_URL
+        const response = await axios.get(`${BASE_URL}/popular.html?page=${page}`);
+        const $ = cheerio.load(response.data);
+        const popularAnime = [];
+        $('div.last_episodes > ul > li').each((i, el) => {
+            const a = $(el).find('p.name > a');
+            const pRelease = $(el).find('p.released');
+            popularAnime.push({
+                id: a.attr('href')?.replace(`/category/`, ''),
+                title: a.text(),
+                releaseDate: pRelease.text().replace('Released: ', '').trim(),
+                image: $(el).find('div > a > img').attr('src'),
+                url: `${BASE_URL}${a.attr('href')}`,
+            });
+        });
+        const hasNextPage = !$('div.anime_name.anime_movies > div > div > ul > li').last().hasClass('selected');
+        const data = { currentPage: page, hasNextPage, results: popularAnime }
+        return data;
+    } catch (error) {
+        console.error('Error fetching from GOGO:', error);
+        throw error;
+    }
+}
+
+export async function fetchAnimeBanner(animeName) {
+    const response = await axios.get(`https://kitsu.io/api/edge/anime?filter[text]=${animeName}`);
+    if (response.data.data && response.data.data.length > 0) {
+
+        const anime = response.data.data[0];
+
+        const data = {
+            title: anime.attributes.canonicalTitle,
+            type: anime.attributes.subtype,
+            startDate: anime.attributes.startDate,
+            status: anime.attributes.status,
+            synopsis: anime.attributes.synopsis,
+            bannerImage: anime.attributes.coverImage,
+            posterImage: anime.attributes.posterImage
+        }
+
+        return data;
+    } else {
+        return { error: 'Anime not found' };
     }
 }
 
@@ -213,15 +273,3 @@ export async function fetchEpisodeSources(episodeId, server = StreamingServers.V
         throw new Error('Episode not found.');
     }
 }
-
-
-/* export async function fetchFromKitsu(animeId) {
-    try {
-        const KITSU_API = process.env.KITSU_API;
-        const response = await axios.get(`${KITSU_API}/${animeId}`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching from Kitsu:', error);
-        throw error;
-    }
-} */

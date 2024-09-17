@@ -4,13 +4,14 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
-
 import animeRoutes from './routes/animeRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
 dotenv.config();
 const app = express();
+
 app.use(cors({
-    origin: '*',
+    origin: process.env.FRONTEND_URL,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
@@ -23,6 +24,7 @@ app.use((err, req, res, next) => {
 app.use(cookieParser());
 
 app.use('/simpanime', animeRoutes);
+app.use('/auth', authRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
     .catch(error => console.log(error));

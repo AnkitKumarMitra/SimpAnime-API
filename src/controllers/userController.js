@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
 // Register User
-export const registerUser = async (req, res) => {
+/* export const registerUser = async (req, res) => {
   try {
     const { fullName, username, email, password } = req.body;
 
@@ -12,32 +12,47 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
+    // Check if the email is already registered
     let existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ error: 'Email is already registered' });
+      return res.status(409).json({ error: 'Email is already registered' });
     }
 
+    // Check if the username is already taken
     existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({ error: 'Username is already taken' });
     }
 
+    // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Create and save the new user
     const user = new User({ fullName, username, email, password: hashedPassword });
     await user.save();
 
+    // Create a JWT token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    
+    // Set cookie with token
     res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 3600000 });
 
-    res.status(201).json({ message: 'User registered successfully', token });
+    // Respond with user details and token
+    res.status(201).json({
+      message: 'User registered successfully',
+      token,
+      user: {
+        id: user._id,
+        username: user.username
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
-};
+}; */
 
 // Login User
-export const loginUser = async (req, res) => {
+/* export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -47,23 +62,33 @@ export const loginUser = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ error: 'Invalid email or password' });
+      return res.status(404).json({ error: 'User Not Found' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    // Create JWT token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+    // Set cookie with token
     res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 3600000 });
 
-    res.status(200).json({ message: 'Login successful', token });
+    // Respond with user details and token
+    res.status(200).json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user._id,
+        username: user.username
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
-};
-
+}; */
 // Add to Watchlist
 export const addToWatchlist = async (req, res) => {
   try {
