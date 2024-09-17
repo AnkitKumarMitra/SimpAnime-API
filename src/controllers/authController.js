@@ -18,30 +18,24 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ error: 'All fields are required.' });
     }
 
-    // Check if the email is already registered
     let existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ error: 'Email is already registered.' });
     }
 
-    // Check if the username is already taken
     existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({ error: 'Username is already taken.' });
     }
 
-    // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create and save the new user
     const user = new User({ fullName, username, email, password: hashedPassword });
     await user.save();
 
-    // Generate tokens
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
-    // Save refreshToken in the database
     user.refreshToken = refreshToken;
     await user.save();
 
@@ -110,8 +104,17 @@ export const refreshAccessToken = async (req, res) => {
     }
 
     const newAccessToken = generateAccessToken(user._id);
+    const newRefreshToken = generateRefreshToken(user._id);
+
+    user.refreshToken = newRefreshToken;
+    await user.save()
+
     res.cookie('accessToken', newAccessToken, { httpOnly: true, maxAge: 15 * 60 * 1000 });
-    res.json({ accessToken: newAccessToken });
+    res.cookie('refreshToken', newRefreshToken, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
+    res.json({
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken
+    });
   } catch (error) {
     res.status(403).json({ error: 'Invalid or expired refresh token' });
   }
@@ -127,7 +130,7 @@ export const logoutUser = async (req, res) => {
       res.clearCookie('refreshToken');
       return res.status(204).json({ message: 'Logged out' });
     }
-    
+
     user.refreshToken = '';
     await user.save();
 

@@ -110,18 +110,16 @@ export async function getTrendingAnime(req, res) {
         const filteredData = data
             .filter(anime => anime.type === "TV" || anime.type === "movie")
             .sort((a, b) => {
-                // First, sort by score in descending order
                 if (b.score !== a.score) {
                     return b.score - a.score;
                 }
-                // If score is the same, then sort by popularity in descending order
                 return a.popularity - b.popularity;
             })
             .map(anime => ({
-                pop: anime.popularity,
+                aired: anime.aired.string,
                 id: anime.mal_id,
                 title: anime.title,
-                image: anime.image_url,
+                image: anime.images,
                 type: anime.type,
                 episodes: anime.episodes,
                 status: anime.status,
@@ -166,7 +164,7 @@ export async function spotlightAnime(req, res) {
                 };
             } catch (error) {
                 console.error(`Error fetching banner for ${anime.title}:`, error);
-                return { id: anime.id, title: anime.title, error: 'Banner not found' };
+                return { error: 'Banner not found' };
             }
         });
 
@@ -185,7 +183,29 @@ export async function recentUpload(req, res) {
     try {
         const page = req.query.page || 1;
         const data = await fetchRecentUpload(page);
-        res.send(data)
+        const result = data.results;
+        const otherDetails = result.map(async (anime) => {
+            try {
+                const bannerData = await fetchAnimeBanner(anime.title);
+                return {
+                    id: anime.id,
+                    episodeNumber: anime.episodeId,
+                    title: bannerData.title,
+                    type: bannerData.type,
+                    aired: `${bannerData.startDate} to ?`,
+                    synopsis: bannerData.synopsis,
+                    image: bannerData.posterImage,
+                };
+            } catch (error) {
+                console.error(`Error fetching banner for ${anime.title}:`, error);
+                return { error: 'Banner not found' };
+            }
+        });
+
+        const combinedData = await Promise.all(otherDetails);
+        const validData = combinedData.filter(item => !item.error);
+        res.send(validData)
+        // res.send(result)
     } catch (error) {
         res.status(500).send('Error fetching recent uploads');
     }
